@@ -1,0 +1,66 @@
+{
+    "name": "S3 Export Plugin",
+    "url": "https://github.com/posthog/s3-export-plugin",
+    "description": "Export PostHog events into S3",
+    "main": "index.js",
+    "config": [
+        {
+            "key": "awsAccessKey",
+            "name": "AWS Access Key",
+            "type": "string",
+            "default": "",
+            "required": true
+        },
+        {
+            "key": "awsSecretAccessKey",
+            "name": "AWS Secret Access Key",
+            "type": "string",
+            "secret": true,
+            "default": "",
+            "required": true
+        },
+        {
+            "key": "awsRegion",
+            "name": "AWS Region",
+            "type": "string",
+            "default": "us-west-1",
+            "required": true
+        },
+        {
+            "key": "s3BucketName",
+            "name": "S3 Bucket name",
+            "type": "string",
+            "default": "",
+            "required": true
+        },
+        {
+            "key": "prefix",
+            "name": "S3 filename prefix",
+            "type": "string",
+            "default": "",
+            "hint": "Use something like 'backups/posthog/' with a trailing slash to put the backups in a separate folder",
+            "required": false
+        },
+        {
+            "key": "uploadMinutes",
+            "name": "Upload frequency in minutes",
+            "type": "string",
+            "default": "1",
+            "required": true
+        },
+        {
+            "key": "uploadMegabytes",
+            "name": "Upload frequency in megabytes",
+            "type": "string",
+            "default": "1",
+            "required": true
+        },
+        {
+            "key": "eventsToIgnore",
+            "name": "Events to ignore",
+            "type": "string",
+            "default": "$snapshot, $feature_flag_called",
+            "hint": "Comma separated list of events to ignore"
+        }
+    ]
+}
