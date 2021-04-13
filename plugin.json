@@ -5,6 +5,9 @@
     "main": "index.js",
     "config": [
         {
+            "markdown": "Read [the documentation](https://github.com/PostHog/s3-export-plugin) here for instructions in getting these keys."
+        },
+        {
             "key": "awsAccessKey",
             "name": "AWS Access Key",
             "type": "string",
@@ -38,21 +41,23 @@
             "name": "S3 filename prefix",
             "type": "string",
             "default": "",
-            "hint": "Use something like 'backups/posthog/' with a trailing slash to put the backups in a separate folder",
+            "hint": "For example \"backups/posthog/\" (with a trailing slash) to store the backups in a separate folder.",
             "required": false
         },
         {
             "key": "uploadMinutes",
-            "name": "Upload frequency in minutes",
+            "name": "Upload at most every X minutes",
             "type": "string",
             "default": "1",
+            "hint": "If there are events to upload and this many minutes has passed since the last upload, send the events to S3.",
             "required": true
         },
         {
             "key": "uploadMegabytes",
-            "name": "Upload frequency in megabytes",
+            "name": "Maximum upload size in megabytes",
             "type": "string",
             "default": "1",
+            "hint": "Always keep the uploaded files below this size limit, uploading more frequently than the time limit if needed. Events are kept in memory until then, so make sure you have enough of it.",
             "required": true
         },
         {
@@ -61,6 +66,14 @@
             "type": "string",
             "default": "$snapshot, $feature_flag_called",
             "hint": "Comma separated list of events to ignore"
+        },
+        {
+            "key": "uploadFormat",
+            "name": "Format of uploaded files",
+            "type": "choice",
+            "choices": ["jsonl"],
+            "default": "jsonl",
+            "hint": "jsonl: text files with one event per line as JSON"
         }
     ]
 }
