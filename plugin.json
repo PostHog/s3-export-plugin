@@ -74,6 +74,14 @@
             "choices": ["jsonl"],
             "default": "jsonl",
             "hint": "jsonl: text files with one event per line as JSON"
+        },
+        {
+            "key": "compression",
+            "name": "Compress uploaded files",
+            "type": "choice",
+            "choices": ["gzip", "brotli", "no compression"],
+            "default": "gzip",
+            "hint": "Compressing events before uploading them to S3 keeps costs down. The upload size limits are applied *before* the compression."
         }
     ]
 }

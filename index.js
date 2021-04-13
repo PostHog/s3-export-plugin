@@ -1,6 +1,7 @@
 import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
+import { brotliCompressSync, gzipSync } from 'zlib'
 
 export function setupPlugin({ global, config }) {
     if (!config.awsAccessKey) {
@@ -32,12 +33,22 @@ export function setupPlugin({ global, config }) {
             console.log(`Flushing ${batch.length} events!`)
             const date = new Date().toISOString()
             const [day, time] = date.split('T')
-            const suffix = randomBytes(20).toString('hex')
+            const suffix = randomBytes(8).toString('hex')
 
             const params = {
                 Bucket: config.s3BucketName,
-                Key: `${config.prefix || ''}${day}/${time}-${suffix}.jsonl`,
-                Body: batch.map(JSON.stringify).join('\n'),
+                Key: `${config.prefix || ''}${day}/${date}-${suffix}.jsonl`,
+                Body: new Buffer(batch.map(JSON.stringify).join('\n'), 'utf8'),
+            }
+
+            if (config.compression === 'gzip') {
+                params.Key = `${params.Key}.gz`
+                params.Body = gzipSync(params.Body)
+            }
+
+            if (config.compression === 'brotli') {
+                params.Key = `${params.Key}.br`
+                params.Body = brotliCompressSync(params.Body)
             }
 
             global.s3.upload(params, (s3Err, data) => {
