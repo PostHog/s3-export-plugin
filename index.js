@@ -16,6 +16,9 @@ export function setupPlugin({ global, config }) {
         throw new Error('S3 bucket name missing')
     }
 
+    const uploadMegaBytes = Math.max(1, Math.min(parseInt(config.uploadMegaBytes) || 1, 100))
+    const uploadMinutes = Math.max(1, Math.min(parseInt(config.uploadMinutes) || 1, 60))
+
     global.s3 = new S3({
         accessKeyId: config.awsAccessKey,
         secretAccessKey: config.awsSecretAccessKey,
@@ -23,8 +26,8 @@ export function setupPlugin({ global, config }) {
     })
 
     global.buffer = createBuffer({
-        limit: (parseInt(config.uploadMegabytes) || 1) * 1024 * 1024,
-        timeoutSeconds: (parseInt(config.uploadMinutes) || 1) * 60,
+        limit: uploadMegaBytes * 1024 * 1024,
+        timeoutSeconds: uploadMinutes * 60,
         onFlush: (batch) => {
             console.log(`Flushing ${batch.length} events!`)
             const date = new Date().toISOString()
@@ -34,18 +37,17 @@ export function setupPlugin({ global, config }) {
             const params = {
                 Bucket: config.s3BucketName,
                 Key: `${config.prefix || ''}${day}/${time}-${suffix}.jsonl`,
-                Body: batch.map(JSON.stringify).join("\n")
+                Body: batch.map(JSON.stringify).join('\n'),
             }
 
             global.s3.upload(params, (s3Err, data) => {
-                console.log('S3 upload callback', !!s3Err)
                 if (s3Err) {
-                    console.log(s3Err.message)
+                    console.error(`Error uploading to S3: ${s3Err.message}`)
                     throw s3Err
                 }
-                console.log(`Uploaded successfully at ${data.Location}`)
+                console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
             })
-        }
+        },
     })
     global.eventsToIgnore = Object.fromEntries(
         (config.eventsToIgnore || '').split(',').map((event) => [event.trim(), true])

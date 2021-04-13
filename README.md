@@ -38,4 +38,11 @@ Sends events to a S3 on ingestion. Requires PostHog 1.24+
 This plugin batches events in memory before uploading them to S3. The upload frequency (every minute) and maximum upload 
 size (1 MB) can be configured after installing the plugin.
 
-You should make sure to keep these numbers reasonable to avoid running out of memory on your server. 
+You should make sure to keep these numbers reasonable to avoid running out of memory on your server.
+
+These values apply separately for each concurrent thread running in the plugin server. 
+
+## Note about errors
+
+If you incorrectly configured your bucket or access roles, you will not get an error message. This will change once
+[this issue](https://github.com/PostHog/plugin-server/issues/72) is resolved. Thank you for your patience! 
