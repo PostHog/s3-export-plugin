@@ -33,11 +33,12 @@ export function setupPlugin({ global, config }) {
             console.log(`Flushing ${batch.length} events!`)
             const date = new Date().toISOString()
             const [day, time] = date.split('T')
+            const dayTime = `${day.split('-').join('')}-${time.split(':').join('')}`
             const suffix = randomBytes(8).toString('hex')
 
             const params = {
                 Bucket: config.s3BucketName,
-                Key: `${config.prefix || ''}${day}/${date}-${suffix}.jsonl`,
+                Key: `${config.prefix || ''}${day}/${dayTime}-${suffix}.jsonl`,
                 Body: new Buffer(batch.map(JSON.stringify).join('\n'), 'utf8'),
             }
 
