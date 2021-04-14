@@ -2,7 +2,7 @@
     "name": "S3 Export Plugin",
     "url": "https://github.com/posthog/s3-export-plugin",
     "description": "Export PostHog events to Amazon S3 on ingestion.",
-    "main": "index.js",
+    "main": "index.ts",
     "posthogVersion": ">= 1.24.0",
     "config": [
         {
