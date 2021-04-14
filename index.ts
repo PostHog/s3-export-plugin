@@ -39,7 +39,7 @@ export const setupPlugin: Plugin<S3Meta>['setupPlugin'] = ({ global, config }) =
         throw new Error('S3 bucket name missing!')
     }
 
-    const uploadMegaBytes = Math.max(1, Math.min(parseInt(config.uploadMegaBytes) || 1, 100))
+    const uploadMegabytes = Math.max(1, Math.min(parseInt(config.uploadMegabytes) || 1, 100))
     const uploadMinutes = Math.max(1, Math.min(parseInt(config.uploadMinutes) || 1, 60))
 
     global.s3 = new S3({
@@ -49,7 +49,7 @@ export const setupPlugin: Plugin<S3Meta>['setupPlugin'] = ({ global, config }) =
     })
 
     global.buffer = createBuffer({
-        limit: uploadMegaBytes * 1024 * 1024,
+        limit: uploadMegabytes * 1024 * 1024,
         timeoutSeconds: uploadMinutes * 60,
         onFlush: (batch) => {
             console.log(`Flushing ${batch.length} events!`)
