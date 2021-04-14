@@ -3,6 +3,7 @@
     "url": "https://github.com/posthog/s3-export-plugin",
     "description": "Export PostHog events to Amazon S3 on ingestion.",
     "main": "index.js",
+    "posthogVersion": ">= 1.24.0",
     "config": [
         {
             "markdown": "Read [the documentation](https://github.com/PostHog/s3-export-plugin) here for instructions in getting these keys."
