@@ -4,9 +4,9 @@
     "version": "0.0.1",
     "description": "Export PostHog events into SnowFlake",
     "devDependencies": {
-        "@types/generic-pool": "^3.1.9"
-    },
-    "dependencies": {
+        "@posthog/plugin-contrib": "^0.0.3",
+        "@posthog/plugin-scaffold": "^0.5.0",
+        "@types/generic-pool": "^3.1.9",
         "aws-sdk": "^2.885.0",
         "generic-pool": "^3.7.8"
     }

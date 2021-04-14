@@ -2,19 +2,41 @@ import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
 import { brotliCompressSync, gzipSync } from 'zlib'
+import { Plugin, PluginMeta} from '@posthog/plugin-scaffold'
+import { ManagedUpload } from 'aws-sdk/clients/s3'
 
-export function setupPlugin({ global, config }) {
+interface S3Meta extends PluginMeta {
+    global: {
+        s3: S3
+        buffer: ReturnType<typeof createBuffer>
+        eventsToIgnore: Set<string>
+    }
+    config: {
+        awsAccessKey: string
+        awsSecretAccessKey: string
+        awsRegion: string
+        s3BucketName: string
+        prefix: string
+        uploadMinutes: string
+        uploadMegabytes: string
+        eventsToIgnore: string
+        uploadFormat: "jsonl"
+        compression: "gzip" | "brotli" | "no compression"
+    }
+}
+
+export const setupPlugin: Plugin<S3Meta>['setupPlugin'] = ({ global, config }) => {
     if (!config.awsAccessKey) {
-        throw new Error('AWS Access Key missing')
+        throw new Error('AWS access key missing!')
     }
     if (!config.awsSecretAccessKey) {
-        throw new Error('AWS Secret Access Key missing')
+        throw new Error('AWS secret access key missing!')
     }
     if (!config.awsRegion) {
-        throw new Error('AWS Region missing')
+        throw new Error('AWS region missing!')
     }
     if (!config.s3BucketName) {
-        throw new Error('S3 bucket name missing')
+        throw new Error('S3 bucket name missing!')
     }
 
     const uploadMegaBytes = Math.max(1, Math.min(parseInt(config.uploadMegaBytes) || 1, 100))
@@ -39,7 +61,7 @@ export function setupPlugin({ global, config }) {
             const params = {
                 Bucket: config.s3BucketName,
                 Key: `${config.prefix || ''}${day}/${dayTime}-${suffix}.jsonl`,
-                Body: new Buffer(batch.map(JSON.stringify).join('\n'), 'utf8'),
+                Body: Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8'),
             }
 
             if (config.compression === 'gzip') {
@@ -51,23 +73,22 @@ export function setupPlugin({ global, config }) {
                 params.Key = `${params.Key}.br`
                 params.Body = brotliCompressSync(params.Body)
             }
-
-            global.s3.upload(params, (s3Err, data) => {
-                if (s3Err) {
-                    console.error(`Error uploading to S3: ${s3Err.message}`)
-                    throw s3Err
+            global.s3.upload(params, (err: Error, data: ManagedUpload.SendData) => {
+                if (err) {
+                    console.error(`Error uploading to S3: ${err.message}`)
+                    throw err
                 }
                 console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
             })
         },
     })
-    global.eventsToIgnore = Object.fromEntries(
-        (config.eventsToIgnore || '').split(',').map((event) => [event.trim(), true])
+    global.eventsToIgnore = new Set(
+        config.eventsToIgnore ? config.eventsToIgnore.split(',').map((event) => event.trim()) : null
     )
 }
 
-export function processEvent(event, { global }) {
-    if (!global.eventsToIgnore[event.event]) {
+export const processEvent: Plugin<S3Meta>['processEvent'] = (event, { global }) => {
+    if (!global.eventsToIgnore.has(event.event)) {
         global.buffer.add(event)
     }
     return event
