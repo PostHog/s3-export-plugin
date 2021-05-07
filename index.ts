@@ -2,10 +2,10 @@ import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
 import { brotliCompressSync, gzipSync } from 'zlib'
-import { Plugin, PluginMeta} from '@posthog/plugin-scaffold'
+import { Plugin, PluginMeta } from '@posthog/plugin-scaffold'
 import { ManagedUpload } from 'aws-sdk/clients/s3'
 
-interface S3Meta extends PluginMeta {
+type S3Meta = PluginMeta<{
     global: {
         s3: S3
         buffer: ReturnType<typeof createBuffer>
@@ -20,12 +20,13 @@ interface S3Meta extends PluginMeta {
         uploadMinutes: string
         uploadMegabytes: string
         eventsToIgnore: string
-        uploadFormat: "jsonl"
-        compression: "gzip" | "brotli" | "no compression"
+        uploadFormat: 'jsonl'
+        compression: 'gzip' | 'brotli' | 'no compression'
     }
-}
+}>
+type S3Plugin = Plugin<S3Meta>
 
-export const setupPlugin: Plugin<S3Meta>['setupPlugin'] = ({ global, config }) => {
+export const setupPlugin: S3Plugin['setupPlugin'] = ({ global, config }) => {
     if (!config.awsAccessKey) {
         throw new Error('AWS access key missing!')
     }
@@ -87,7 +88,7 @@ export const setupPlugin: Plugin<S3Meta>['setupPlugin'] = ({ global, config }) =
     )
 }
 
-export const processEvent: Plugin<S3Meta>['processEvent'] = (event, { global }) => {
+export const processEvent: S3Plugin['processEvent'] = (event, { global }) => {
     if (!global.eventsToIgnore.has(event.event)) {
         global.buffer.add(event)
     }
