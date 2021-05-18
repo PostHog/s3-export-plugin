@@ -41,7 +41,7 @@ export const jobs: PluginJobs<S3Meta> = {
             sendBatchToS3(payload.batch, meta)
         } catch (err) {
             if (err.constructor === UploadError && payload.retriesPerformedSoFar < 15) {
-                const nextRetryMs = 2 ** payload.retriesPerformedSoFar * 3000 // here
+                const nextRetryMs = 2 ** payload.retriesPerformedSoFar * 3000 
                 console.log(`Enqueued batch ${payload.batchId} for retry in ${nextRetryMs}ms`)
                 await jobs
                     .uploadBatchToS3({
@@ -83,7 +83,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
 
     global.buffer = createBuffer({
         limit: uploadMegabytes * 1024 * 1024,
-        timeoutSeconds: uploadMinutes * 60, // here
+        timeoutSeconds: uploadMinutes * 60, 
         onFlush: async (batch) => {
             await jobs.uploadBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }).runNow()
         },
