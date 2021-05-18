@@ -10,7 +10,6 @@ type S3Meta = PluginMeta<{
         s3: S3
         buffer: ReturnType<typeof createBuffer>
         eventsToIgnore: Set<string>
-        retryQueue: RetryQueue
     }
     config: {
         awsAccessKey: string
@@ -30,49 +29,27 @@ type S3Plugin = Plugin<S3Meta>
 interface UploadJobPayload {
     batch: PluginEvent[]
     batchId: number
+    retriesPerformedSoFar: number
 }
 
 class UploadError extends Error {}
-class RetryQueue {
-    baseInterval: number
-    meta: S3Meta
-    requestRetriesMap: Map<number, number>
-
-    constructor(meta: S3Meta) {
-        this.baseInterval = 3000 // ms
-        this.meta = meta
-        this.requestRetriesMap = new Map<number, number>()
-    }
-
-    async enqueue(batch: PluginEvent[], id: number) {
-        const { jobs } = this.meta
-        let retriesPerformedSoFar = 0
-        if (!this.requestRetriesMap.has(id)) {
-            this.requestRetriesMap.set(id, 0)
-        } else {
-            retriesPerformedSoFar = this.requestRetriesMap.get(id)!
-            if (retriesPerformedSoFar === 15) {
-                this.requestRetriesMap.delete(id)
-                return
-            }
-            this.requestRetriesMap.set(id, retriesPerformedSoFar + 1)
-        }
-
-        const nextRetryMs = 2 ** retriesPerformedSoFar * this.baseInterval
-        console.log(`Enqueued batch ${id} for retry in ${nextRetryMs}ms`)
-
-        await jobs.uploadBatchToS3({ batch, batchId: id }).runIn(nextRetryMs, 'milliseconds')
-    }
-}
 
 export const jobs: PluginJobs<S3Meta> = {
     uploadBatchToS3: async (payload: UploadJobPayload, meta: S3Meta) => {
-        const { global } = meta
+        const { jobs } = meta
         try {
             sendBatchToS3(payload.batch, meta)
         } catch (err) {
-            if (err.constructor === UploadError) {
-                global.retryQueue.enqueue(payload.batch, payload.batchId)
+            if (err.constructor === UploadError && payload.retriesPerformedSoFar < 15) {
+                const nextRetryMs = 2 ** payload.retriesPerformedSoFar * 3000 // here
+                console.log(`Enqueued batch ${payload.batchId} for retry in ${nextRetryMs}ms`)
+                await jobs
+                    .uploadBatchToS3({
+                        batch: payload.batch,
+                        batchId: payload.batchId,
+                        retriesPerformedSoFar: payload.retriesPerformedSoFar + 1,
+                    })
+                    .runIn(nextRetryMs, 'milliseconds')
                 return
             }
             throw err
@@ -104,13 +81,11 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
         region: config.awsRegion,
     })
 
-    global.retryQueue = new RetryQueue(meta)
-
     global.buffer = createBuffer({
         limit: uploadMegabytes * 1024 * 1024,
-        timeoutSeconds: uploadMinutes * 60,
+        timeoutSeconds: uploadMinutes * 60, // here
         onFlush: async (batch) => {
-            await jobs.uploadBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000) }).runNow()
+            await jobs.uploadBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }).runNow()
         },
     })
 
