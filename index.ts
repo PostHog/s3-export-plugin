@@ -108,7 +108,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
 
     global.buffer = createBuffer({
         limit: uploadMegabytes * 1024 * 1024,
-        timeoutSeconds: uploadMinutes,
+        timeoutSeconds: uploadMinutes * 60,
         onFlush: async (batch) => {
             await jobs.uploadBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000) }).runNow()
         },
