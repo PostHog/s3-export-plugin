@@ -27,15 +27,13 @@ type S3Meta = PluginMeta<{
 }>
 type S3Plugin = Plugin<S3Meta>
 
-class UploadError extends Error { }
+class UploadError extends Error {}
 class RetryQueue {
     baseInterval: number
     meta: S3Meta
     requestRetriesMap: Map<number, number>
 
-    constructor(
-        meta: S3Meta
-    ) {
+    constructor(meta: S3Meta) {
         this.baseInterval = 3000 // ms
         this.meta = meta
         this.requestRetriesMap = new Map<number, number>()
@@ -55,14 +53,11 @@ class RetryQueue {
             this.requestRetriesMap.set(id, retriesPerformedSoFar + 1)
         }
 
-
-        const nextRetryMs = (2 ** retriesPerformedSoFar) * this.baseInterval
+        const nextRetryMs = 2 ** retriesPerformedSoFar * this.baseInterval
         console.log(`Enqueued batch ${id} for retry in ${nextRetryMs}ms`)
-
 
         await jobs.uploadBatchToS3({ batch, batchId: id }).runIn(nextRetryMs, 'milliseconds')
     }
-
 }
 
 interface UploadJobPayload {
@@ -82,7 +77,7 @@ export const jobs: PluginJobs<S3Meta> = {
             }
             throw err
         }
-    }
+    },
 }
 
 export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
