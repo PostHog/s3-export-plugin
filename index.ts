@@ -27,6 +27,11 @@ type S3Meta = PluginMeta<{
 }>
 type S3Plugin = Plugin<S3Meta>
 
+interface UploadJobPayload {
+    batch: PluginEvent[]
+    batchId: number
+}
+
 class UploadError extends Error {}
 class RetryQueue {
     baseInterval: number
@@ -58,11 +63,6 @@ class RetryQueue {
 
         await jobs.uploadBatchToS3({ batch, batchId: id }).runIn(nextRetryMs, 'milliseconds')
     }
-}
-
-interface UploadJobPayload {
-    batch: PluginEvent[]
-    batchId: number
 }
 
 export const jobs: PluginJobs<S3Meta> = {
