@@ -45,8 +45,7 @@ export const jobs: PluginJobs<S3Meta> = {
                 console.log(`Enqueued batch ${payload.batchId} for retry in ${nextRetryMs}ms`)
                 await jobs
                     .uploadBatchToS3({
-                        batch: payload.batch,
-                        batchId: payload.batchId,
+                        ...payload,
                         retriesPerformedSoFar: payload.retriesPerformedSoFar + 1,
                     })
                     .runIn(nextRetryMs, 'milliseconds')
