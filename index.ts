@@ -32,27 +32,9 @@ interface UploadJobPayload {
     retriesPerformedSoFar: number
 }
 
-class UploadError extends Error {}
-
 export const jobs: PluginJobs<S3Meta> = {
     uploadBatchToS3: async (payload: UploadJobPayload, meta: S3Meta) => {
-        const { jobs } = meta
-        try {
-            sendBatchToS3(payload.batch, meta)
-        } catch (err) {
-            if (err.constructor === UploadError && payload.retriesPerformedSoFar < 15) {
-                const nextRetryMs = 2 ** payload.retriesPerformedSoFar * 3000 
-                console.log(`Enqueued batch ${payload.batchId} for retry in ${nextRetryMs}ms`)
-                await jobs
-                    .uploadBatchToS3({
-                        ...payload,
-                        retriesPerformedSoFar: payload.retriesPerformedSoFar + 1,
-                    })
-                    .runIn(nextRetryMs, 'milliseconds')
-                return
-            }
-            throw err
-        }
+        sendBatchToS3(payload, meta)
     },
 }
 
@@ -82,9 +64,9 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
 
     global.buffer = createBuffer({
         limit: uploadMegabytes * 1024 * 1024,
-        timeoutSeconds: uploadMinutes * 60, 
+        timeoutSeconds: uploadMinutes * 60,
         onFlush: async (batch) => {
-            await jobs.uploadBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }).runNow()
+            sendBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
         },
     })
 
@@ -99,7 +81,8 @@ export const onEvent = (event: PluginEvent, { global }: S3Meta) => {
     }
 }
 
-export const sendBatchToS3 = (batch: PluginEvent[], { global, config }: S3Meta) => {
+export const sendBatchToS3 = async (payload: UploadJobPayload, { global, config, jobs }: S3Meta) => {
+    const { batch } = payload
     const date = new Date().toISOString()
     const [day, time] = date.split('T')
     const dayTime = `${day.split('-').join('')}-${time.split(':').join('')}`
@@ -122,10 +105,20 @@ export const sendBatchToS3 = (batch: PluginEvent[], { global, config }: S3Meta) 
     }
 
     console.log(`Flushing ${batch.length} events!`)
-    global.s3.upload(params, (err: Error, data: ManagedUpload.SendData) => {
+    global.s3.upload(params, async (err: Error, data: ManagedUpload.SendData) => {
         if (err) {
             console.error(`Error uploading to S3: ${err.message}`)
-            throw new UploadError()
+            if (payload.retriesPerformedSoFar >= 15) {
+                return
+            }
+            const nextRetryMs = 2 ** payload.retriesPerformedSoFar * 3000
+            console.log(`Enqueued batch ${payload.batchId} for retry in ${nextRetryMs}ms`)
+            await jobs
+                .uploadBatchToS3({
+                    ...payload,
+                    retriesPerformedSoFar: payload.retriesPerformedSoFar + 1,
+                })
+                .runIn(nextRetryMs, 'milliseconds')
         }
         console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
     })
