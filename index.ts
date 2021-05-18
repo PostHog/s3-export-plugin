@@ -2,10 +2,10 @@ import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
 import { brotliCompressSync, gzipSync } from 'zlib'
-import { Plugin, PluginMeta, PluginEvent, PluginJobs } from '@posthog/plugin-scaffold'
+import { Plugin, PluginMeta, PluginEvent } from '@posthog/plugin-scaffold'
 import { ManagedUpload } from 'aws-sdk/clients/s3'
 
-type S3Meta = PluginMeta<{
+type S3Plugin = Plugin<{
     global: {
         s3: S3
         buffer: ReturnType<typeof createBuffer>
@@ -23,8 +23,10 @@ type S3Meta = PluginMeta<{
         uploadFormat: 'jsonl'
         compression: 'gzip' | 'brotli' | 'no compression'
     }
+    jobs: {
+        uploadBatchToS3: UploadJobPayload
+    }
 }>
-type S3Plugin = Plugin<S3Meta>
 
 interface UploadJobPayload {
     batch: PluginEvent[]
@@ -32,9 +34,9 @@ interface UploadJobPayload {
     retriesPerformedSoFar: number
 }
 
-export const jobs: PluginJobs<S3Meta> = {
-    uploadBatchToS3: async (payload: UploadJobPayload, meta: S3Meta) => {
-        sendBatchToS3(payload, meta)
+export const jobs: S3Plugin['jobs'] = {
+    uploadBatchToS3: async (payload, meta) => {
+        await sendBatchToS3(payload, meta)
     },
 }
 
@@ -75,13 +77,15 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     )
 }
 
-export const onEvent = (event: PluginEvent, { global }: S3Meta) => {
+export const onEvent: S3Plugin['onEvent'] = (event, { global }) => {
     if (!global.eventsToIgnore.has(event.event)) {
         global.buffer.add(event)
     }
 }
 
-export const sendBatchToS3 = async (payload: UploadJobPayload, { global, config, jobs }: S3Meta) => {
+export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<S3Plugin>) => {
+    const { global, config, jobs } = meta
+
     const { batch } = payload
     const date = new Date().toISOString()
     const [day, time] = date.split('T')
