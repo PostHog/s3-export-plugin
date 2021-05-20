@@ -2,10 +2,10 @@ import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
 import { brotliCompressSync, gzipSync } from 'zlib'
-import { Plugin, PluginMeta } from '@posthog/plugin-scaffold'
+import { Plugin, PluginMeta, PluginEvent } from '@posthog/plugin-scaffold'
 import { ManagedUpload } from 'aws-sdk/clients/s3'
 
-type S3Meta = PluginMeta<{
+type S3Plugin = Plugin<{
     global: {
         s3: S3
         buffer: ReturnType<typeof createBuffer>
@@ -23,10 +23,25 @@ type S3Meta = PluginMeta<{
         uploadFormat: 'jsonl'
         compression: 'gzip' | 'brotli' | 'no compression'
     }
+    jobs: {
+        uploadBatchToS3: UploadJobPayload
+    }
 }>
-type S3Plugin = Plugin<S3Meta>
 
-export const setupPlugin: S3Plugin['setupPlugin'] = ({ global, config }) => {
+interface UploadJobPayload {
+    batch: PluginEvent[]
+    batchId: number
+    retriesPerformedSoFar: number
+}
+
+export const jobs: S3Plugin['jobs'] = {
+    uploadBatchToS3: async (payload, meta) => {
+        await sendBatchToS3(payload, meta)
+    },
+}
+
+export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
+    const { global, config, jobs } = meta
     if (!config.awsAccessKey) {
         throw new Error('AWS access key missing!')
     }
@@ -52,45 +67,63 @@ export const setupPlugin: S3Plugin['setupPlugin'] = ({ global, config }) => {
     global.buffer = createBuffer({
         limit: uploadMegabytes * 1024 * 1024,
         timeoutSeconds: uploadMinutes * 60,
-        onFlush: (batch) => {
-            console.log(`Flushing ${batch.length} events!`)
-            const date = new Date().toISOString()
-            const [day, time] = date.split('T')
-            const dayTime = `${day.split('-').join('')}-${time.split(':').join('')}`
-            const suffix = randomBytes(8).toString('hex')
-
-            const params = {
-                Bucket: config.s3BucketName,
-                Key: `${config.prefix || ''}${day}/${dayTime}-${suffix}.jsonl`,
-                Body: Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8'),
-            }
-
-            if (config.compression === 'gzip') {
-                params.Key = `${params.Key}.gz`
-                params.Body = gzipSync(params.Body)
-            }
-
-            if (config.compression === 'brotli') {
-                params.Key = `${params.Key}.br`
-                params.Body = brotliCompressSync(params.Body)
-            }
-            global.s3.upload(params, (err: Error, data: ManagedUpload.SendData) => {
-                if (err) {
-                    console.error(`Error uploading to S3: ${err.message}`)
-                    throw err
-                }
-                console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
-            })
+        onFlush: async (batch) => {
+            sendBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
         },
     })
+
     global.eventsToIgnore = new Set(
         config.eventsToIgnore ? config.eventsToIgnore.split(',').map((event) => event.trim()) : null
     )
 }
 
-export const processEvent: S3Plugin['processEvent'] = (event, { global }) => {
+export const onEvent: S3Plugin['onEvent'] = (event, { global }) => {
     if (!global.eventsToIgnore.has(event.event)) {
         global.buffer.add(event)
     }
-    return event
+}
+
+export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<S3Plugin>) => {
+    const { global, config, jobs } = meta
+
+    const { batch } = payload
+    const date = new Date().toISOString()
+    const [day, time] = date.split('T')
+    const dayTime = `${day.split('-').join('')}-${time.split(':').join('')}`
+    const suffix = randomBytes(8).toString('hex')
+
+    const params = {
+        Bucket: config.s3BucketName,
+        Key: `${config.prefix || ''}${day}/${dayTime}-${suffix}.jsonl`,
+        Body: Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8'),
+    }
+
+    if (config.compression === 'gzip') {
+        params.Key = `${params.Key}.gz`
+        params.Body = gzipSync(params.Body)
+    }
+
+    if (config.compression === 'brotli') {
+        params.Key = `${params.Key}.br`
+        params.Body = brotliCompressSync(params.Body)
+    }
+
+    console.log(`Flushing ${batch.length} events!`)
+    global.s3.upload(params, async (err: Error, data: ManagedUpload.SendData) => {
+        if (err) {
+            console.error(`Error uploading to S3: ${err.message}`)
+            if (payload.retriesPerformedSoFar >= 15) {
+                return
+            }
+            const nextRetryMs = 2 ** payload.retriesPerformedSoFar * 3000
+            console.log(`Enqueued batch ${payload.batchId} for retry in ${nextRetryMs}ms`)
+            await jobs
+                .uploadBatchToS3({
+                    ...payload,
+                    retriesPerformedSoFar: payload.retriesPerformedSoFar + 1,
+                })
+                .runIn(nextRetryMs, 'milliseconds')
+        }
+        console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
+    })
 }

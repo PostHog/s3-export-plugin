@@ -65,7 +65,7 @@
             "key": "eventsToIgnore",
             "name": "Events to ignore",
             "type": "string",
-            "default": "$snapshot, $feature_flag_called",
+            "default": "$feature_flag_called",
             "hint": "Comma separated list of events to ignore"
         },
         {
