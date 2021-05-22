@@ -1,15 +1,11 @@
-import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
 import { brotliCompressSync, gzipSync } from 'zlib'
-import { Plugin, PluginMeta, PluginEvent } from '@posthog/plugin-scaffold'
-import { ManagedUpload } from 'aws-sdk/clients/s3'
+import { Plugin, PluginMeta, PluginEvent, RetryError } from '@posthog/plugin-scaffold'
 
 type S3Plugin = Plugin<{
     global: {
         s3: S3
-        buffer: ReturnType<typeof createBuffer>
-        eventsToIgnore: Set<string>
     }
     config: {
         awsAccessKey: string
@@ -17,31 +13,12 @@ type S3Plugin = Plugin<{
         awsRegion: string
         s3BucketName: string
         prefix: string
-        uploadMinutes: string
-        uploadMegabytes: string
-        eventsToIgnore: string
         uploadFormat: 'jsonl'
         compression: 'gzip' | 'brotli' | 'no compression'
     }
-    jobs: {
-        uploadBatchToS3: UploadJobPayload
-    }
 }>
 
-interface UploadJobPayload {
-    batch: PluginEvent[]
-    batchId: number
-    retriesPerformedSoFar: number
-}
-
-export const jobs: S3Plugin['jobs'] = {
-    uploadBatchToS3: async (payload, meta) => {
-        await sendBatchToS3(payload, meta)
-    },
-}
-
-export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
-    const { global, config, jobs } = meta
+export const setupPlugin: S3Plugin['setupPlugin'] = ({ global, config }) => {
     if (!config.awsAccessKey) {
         throw new Error('AWS access key missing!')
     }
@@ -55,38 +32,14 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
         throw new Error('S3 bucket name missing!')
     }
 
-    const uploadMegabytes = Math.max(1, Math.min(parseInt(config.uploadMegabytes) || 1, 100))
-    const uploadMinutes = Math.max(1, Math.min(parseInt(config.uploadMinutes) || 1, 60))
-
     global.s3 = new S3({
         accessKeyId: config.awsAccessKey,
         secretAccessKey: config.awsSecretAccessKey,
         region: config.awsRegion,
     })
-
-    global.buffer = createBuffer({
-        limit: uploadMegabytes * 1024 * 1024,
-        timeoutSeconds: uploadMinutes * 60,
-        onFlush: async (batch) => {
-            sendBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
-        },
-    })
-
-    global.eventsToIgnore = new Set(
-        config.eventsToIgnore ? config.eventsToIgnore.split(',').map((event) => event.trim()) : null
-    )
 }
 
-export const onEvent: S3Plugin['onEvent'] = (event, { global }) => {
-    if (!global.eventsToIgnore.has(event.event)) {
-        global.buffer.add(event)
-    }
-}
-
-export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<S3Plugin>) => {
-    const { global, config, jobs } = meta
-
-    const { batch } = payload
+export const exportEvents = async (events: PluginEvent[], { global, config }: PluginMeta<S3Plugin>) => {
     const date = new Date().toISOString()
     const [day, time] = date.split('T')
     const dayTime = `${day.split('-').join('')}-${time.split(':').join('')}`
@@ -95,7 +48,7 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
     const params = {
         Bucket: config.s3BucketName,
         Key: `${config.prefix || ''}${day}/${dayTime}-${suffix}.jsonl`,
-        Body: Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8'),
+        Body: Buffer.from(events.map((event) => JSON.stringify(event)).join('\n'), 'utf8'),
     }
 
     if (config.compression === 'gzip') {
@@ -108,22 +61,16 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
         params.Body = brotliCompressSync(params.Body)
     }
 
-    console.log(`Flushing ${batch.length} events!`)
-    global.s3.upload(params, async (err: Error, data: ManagedUpload.SendData) => {
-        if (err) {
-            console.error(`Error uploading to S3: ${err.message}`)
-            if (payload.retriesPerformedSoFar >= 15) {
-                return
+    console.log(`Flushing ${events.length} events!`)
+
+    await new Promise(((resolve, reject) => {
+        global.s3.upload(params, async (err: Error, data: S3.ManagedUpload.SendData) => {
+            if (err) {
+                reject(new RetryError(err.message))
+            } else {
+                console.log(`Uploaded ${events.length} event${events.length === 1 ? '' : 's'} to ${data.Location}`)
+                resolve(data)
             }
-            const nextRetryMs = 2 ** payload.retriesPerformedSoFar * 3000
-            console.log(`Enqueued batch ${payload.batchId} for retry in ${nextRetryMs}ms`)
-            await jobs
-                .uploadBatchToS3({
-                    ...payload,
-                    retriesPerformedSoFar: payload.retriesPerformedSoFar + 1,
-                })
-                .runIn(nextRetryMs, 'milliseconds')
-        }
-        console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
-    })
+        })
+    }))
 }
