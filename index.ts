@@ -79,7 +79,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = ({ global, config }) => {
                     console.error(`Error uploading to S3: ${err.message}`)
                     throw err
                 }
-                console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
+                console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data ? data.Location || '' : ''}`)
             })
         },
     })
