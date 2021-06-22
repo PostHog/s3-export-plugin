@@ -74,12 +74,12 @@ export const setupPlugin: S3Plugin['setupPlugin'] = ({ global, config }) => {
                 params.Key = `${params.Key}.br`
                 params.Body = brotliCompressSync(params.Body)
             }
-            global.s3.upload(params, (err: Error, data: ManagedUpload.SendData) => {
+            global.s3.upload(params, (err: Error, _: ManagedUpload.SendData) => {
                 if (err) {
                     console.error(`Error uploading to S3: ${err.message}`)
                     throw err
                 }
-                console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data ? data.Location || '' : ''}`)
+                console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to bucket ${config.s3BucketName}`)
             })
         },
     })
