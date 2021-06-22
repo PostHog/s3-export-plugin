@@ -109,7 +109,7 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
     }
 
     console.log(`Flushing ${batch.length} events!`)
-    global.s3.upload(params, async (err: Error, data: ManagedUpload.SendData) => {
+    global.s3.upload(params, async (err: Error, _: ManagedUpload.SendData) => {
         if (err) {
             console.error(`Error uploading to S3: ${err.message}`)
             if (payload.retriesPerformedSoFar >= 15) {
@@ -124,6 +124,6 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
                 })
                 .runIn(nextRetryMs, 'milliseconds')
         }
-        console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to ${data.Location}`)
+        console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to bucket ${config.s3BucketName}`)
     })
 }
