@@ -16,6 +16,7 @@ type S3Plugin = Plugin<{
         awsSecretAccessKey: string
         awsRegion: string
         s3BucketName: string
+        s3BucketEndpoint: string
         prefix: string
         uploadMinutes: string
         uploadMegabytes: string
@@ -58,11 +59,20 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     const uploadMegabytes = Math.max(1, Math.min(parseInt(config.uploadMegabytes) || 1, 100))
     const uploadMinutes = Math.max(1, Math.min(parseInt(config.uploadMinutes) || 1, 60))
 
-    global.s3 = new S3({
+    const s3Config = {
         accessKeyId: config.awsAccessKey,
         secretAccessKey: config.awsSecretAccessKey,
         region: config.awsRegion,
-    })
+	signatureVersion: 'v4',
+    }
+
+    if (config.s3BucketEndpoint) {
+	s3Config.s3BucketEndpoint = true
+	s3Config.s3ForcePathStyle = true
+	s3Config.endpoint = config.s3BucketEndpoint
+    }
+
+    global.s3 = new S3(s3Config)
 
     global.buffer = createBuffer({
         limit: uploadMegabytes * 1024 * 1024,
