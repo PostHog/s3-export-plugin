@@ -67,8 +67,6 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     }
 
     if (config.s3BucketEndpoint) {
-	s3Config.s3BucketEndpoint = true
-	s3Config.s3ForcePathStyle = true
 	s3Config.endpoint = config.s3BucketEndpoint
     }
 
