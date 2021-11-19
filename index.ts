@@ -58,7 +58,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     if (!config.s3BucketName) {
         throw new Error('S3 bucket name missing!')
     }
-    if (config.sse === 'aws:kms' && config.sseKmsKeyId === '') {
+    if (config.sse === 'aws:kms' && !config.sseKmsKeyId) {
         throw new Error('AWS KMS encryption requested but not KMS key ID provided!')
     }
 
