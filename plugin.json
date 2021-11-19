@@ -83,6 +83,22 @@
             "choices": ["gzip", "brotli", "no compression"],
             "default": "gzip",
             "hint": "Compressing events before uploading them to S3 keeps costs down. The upload size limits are applied *before* the compression."
+        },
+        {
+            "key": "s3BucketEndpoint",
+            "name": "[ADVANCED] S3 Bucket Endpoint",
+            "type": "string",
+            "default": "",
+	        "hint": "For example: `http://127.0.0.1:9000`, which is a `minio` or `localstack` instance that is API compatible with Amazon S3",
+            "required": false
+        },
+        {
+            "key": "signatureVersion",
+            "name": "[ADVANCED] Signature version",
+            "type": "choice",
+            "choices": ["v4", ""],
+            "default": "",
+            "hint": "[Docs](https://docs.aws.amazon.com/AmazonS3/latest/API/bucket-policy-s3-sigv4-conditions.html)"
         }
     ]
 }
