@@ -23,6 +23,7 @@ type S3Plugin = Plugin<{
         eventsToIgnore: string
         uploadFormat: 'jsonl'
         compression: 'gzip' | 'brotli' | 'no compression'
+        signatureVersion: '' | 'v4'
     }
     jobs: {
         uploadBatchToS3: UploadJobPayload
@@ -63,11 +64,11 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
         accessKeyId: config.awsAccessKey,
         secretAccessKey: config.awsSecretAccessKey,
         region: config.awsRegion,
-	signatureVersion: 'v4',
+        ...(config.signatureVersion ? { signatureVersion: config.signatureVersion } : {})
     }
 
     if (config.s3BucketEndpoint) {
-	s3Config.endpoint = config.s3BucketEndpoint
+	    s3Config.endpoint = config.s3BucketEndpoint
     }
 
     global.s3 = new S3(s3Config)
