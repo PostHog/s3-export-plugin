@@ -59,7 +59,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
         throw new Error('S3 bucket name missing!')
     }
     if (config.sse === 'aws:kms' && !config.sseKmsKeyId) {
-        throw new Error('AWS KMS encryption requested but not KMS key ID provided!')
+        throw new Error('AWS KMS encryption requested but no KMS key ID provided!')
     }
 
     const uploadMegabytes = Math.max(1, Math.min(parseInt(config.uploadMegabytes) || 1, 100))
