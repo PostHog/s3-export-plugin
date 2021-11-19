@@ -23,7 +23,9 @@ type S3Plugin = Plugin<{
         eventsToIgnore: string
         uploadFormat: 'jsonl'
         compression: 'gzip' | 'brotli' | 'no compression'
-        signatureVersion: '' | 'v4'
+        signatureVersion: '' | 'v4',
+        sse: 'disabled' | 'AES256' | 'aws:kms',
+        sseKmsKeyId: string
     }
     jobs: {
         uploadBatchToS3: UploadJobPayload
@@ -55,6 +57,9 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     }
     if (!config.s3BucketName) {
         throw new Error('S3 bucket name missing!')
+    }
+    if (config.sse === 'aws:kms' && !config.sseKmsKeyId) {
+        throw new Error('AWS KMS encryption requested but no KMS key ID provided!')
     }
 
     const uploadMegabytes = Math.max(1, Math.min(parseInt(config.uploadMegabytes) || 1, 100))
@@ -115,6 +120,14 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
     if (config.compression === 'brotli') {
         params.Key = `${params.Key}.br`
         params.Body = brotliCompressSync(params.Body)
+    }
+
+    if (config.sse !== 'disabled') {
+        params.ServerSideEncryption = config.sse
+    }
+
+    if (config.sse === 'aws:kms') {
+        params.SSEKMSKeyId = config.sseKmsKeyId
     }
 
     console.log(`Flushing ${batch.length} events!`)
