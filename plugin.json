@@ -31,6 +31,14 @@
             "required": true
         },
         {
+            "key": "s3BucketEndpoint",
+            "name": "S3 Bucket Endpoint",
+            "type": "string",
+            "default": "",
+	    "hint": "For example \"http://127.0.0.1:9000\", which is minio or localstack instance with API compatible with Amazon S3",
+            "required": false
+        },
+        {
             "key": "s3BucketName",
             "name": "S3 Bucket name",
             "type": "string",
