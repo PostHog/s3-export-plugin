@@ -99,6 +99,22 @@
             "choices": ["v4", ""],
             "default": "",
             "hint": "[Docs](https://docs.aws.amazon.com/AmazonS3/latest/API/bucket-policy-s3-sigv4-conditions.html)"
+        },
+        {
+            "key": "sse",
+            "name": "Server-side encryption",
+            "type": "choice",
+            "choices": ["disabled", "AES256", "aws:kms"],
+            "default": "disabled",
+            "hint": "Specifies server-side encryption of the object in S3. Valid values are AES256 and aws:kms. If the parameter is specified but no value is provided, AES256 is used."
+        },
+        {
+            "key": "sseKmsKeyId",
+            "name": "SSE KMS key ID",
+            "type": "string",
+            "default": "",
+            "hint": "The customer-managed AWS Key Management Service (KMS) key ID that should be used to server-side encrypt the object in S3.",
+            "required": false
         }
     ]
 }
