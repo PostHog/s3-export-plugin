@@ -10,7 +10,7 @@ Export events to Amazon S3 on ingestion. Archive your data, or simply free it up
 1. To perform installation either:
     1. go to the **Repository** tab, find this plugin, and **Install** it,
     1. or go to the **Advanced** tab and **Fetch and install** the following URL in the **Install from GitHub, GitLab or npm** section:  
-        `http://github.com/PostHog/posthog-plugin-geoip`.
+        `https://github.com/posthog/s3-export-plugin`.
 1. Configure the plugin by entering your AWS credentials and S3 bucket details.
 1. Watch events roll into S3!
 
