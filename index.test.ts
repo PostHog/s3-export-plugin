@@ -1,6 +1,8 @@
-import { createEvent, getMeta, resetMeta } from "@posthog/plugin-scaffold/test/utils";
+const { createEvent, getMeta, resetMeta } = require("@posthog/plugin-scaffold/test/utils");
+
 import { setupPlugin, sendBatchToS3 } from "./index";
 import { SinonStub, stub } from "sinon";
+import { expect } from "chai";
 import { S3 } from "aws-sdk";
 
 describe("without SSE", () => {
@@ -36,6 +38,17 @@ describe("without SSE", () => {
             getMeta()
         );
 
-        console.log(s3UploadStub.lastCall.args);
+        const lastCallArgs = s3UploadStub.lastCall.args[0];
+
+        const payload = JSON.parse(
+            lastCallArgs.Body.toString()
+        );
+        
+        expect(lastCallArgs.Bucket).to.eq("the-bucket");
+        expect(lastCallArgs.Key).to.match(/jsonl$/);
+
+        expect(payload).to.contain(
+            { event: "something happened" }
+        );
     });
 });
