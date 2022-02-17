@@ -3,11 +3,19 @@
     "private": true,
     "version": "0.0.3",
     "description": "Export PostHog events to Amazon S3 on ingestion.",
+    "scripts": {
+        "test": "jest ."
+    },
     "devDependencies": {
         "@posthog/plugin-contrib": "^0.0.3",
-        "@posthog/plugin-scaffold": "^0.9.0",
+        "@posthog/plugin-scaffold": "0.10.0",
         "@types/generic-pool": "^3.1.9",
+        "@types/jest": "^27.4.0",
+        "@types/sinon": "^10.0.11",
         "aws-sdk": "^2.885.0",
-        "generic-pool": "^3.7.8"
+        "generic-pool": "^3.7.8",
+        "jest": "^27.0.4",
+        "sinon": "^13.0.1",
+        "ts-jest": "^27.1.3"
     }
 }

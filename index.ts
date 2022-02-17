@@ -65,7 +65,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     const uploadMegabytes = Math.max(1, Math.min(parseInt(config.uploadMegabytes) || 1, 100))
     const uploadMinutes = Math.max(1, Math.min(parseInt(config.uploadMinutes) || 1, 60))
 
-    const s3Config = {
+    const s3Config: S3.ClientConfiguration = {
         accessKeyId: config.awsAccessKey,
         secretAccessKey: config.awsSecretAccessKey,
         region: config.awsRegion,
@@ -106,20 +106,20 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
     const dayTime = `${day.split('-').join('')}-${time.split(':').join('')}`
     const suffix = randomBytes(8).toString('hex')
 
-    const params = {
+    const params: S3.PutObjectRequest = {
         Bucket: config.s3BucketName,
         Key: `${config.prefix || ''}${day}/${dayTime}-${suffix}.jsonl`,
-        Body: Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8'),
+        Body: Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8')
     }
 
     if (config.compression === 'gzip') {
         params.Key = `${params.Key}.gz`
-        params.Body = gzipSync(params.Body)
+        params.Body = gzipSync(params.Body as Buffer)
     }
 
     if (config.compression === 'brotli') {
         params.Key = `${params.Key}.br`
-        params.Body = brotliCompressSync(params.Body)
+        params.Body = brotliCompressSync(params.Body as Buffer)
     }
 
     if (config.sse !== 'disabled') {
