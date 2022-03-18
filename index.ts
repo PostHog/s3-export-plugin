@@ -149,5 +149,3 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
         console.log(`Uploaded ${batch.length} event${batch.length === 1 ? '' : 's'} to bucket ${config.s3BucketName}`)
     })
 }
-
-// test ci
