@@ -93,6 +93,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
 
 export const onEvent: S3Plugin['onEvent'] = (event, { global }) => {
     if (!global.eventsToIgnore.has(event.event)) {
+	console.log(event.event, event.timestamp)
         global.buffer.add(event)
     }
 }
