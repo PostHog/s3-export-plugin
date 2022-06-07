@@ -82,7 +82,7 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
         limit: uploadMegabytes * 1024 * 1024,
         timeoutSeconds: uploadMinutes * 60,
         onFlush: async (batch) => {
-            sendBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
+            await sendBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
         },
     })
 
@@ -94,11 +94,16 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
 export const onEvent: S3Plugin['onEvent'] = (event, { global }) => {
     if (!global.eventsToIgnore.has(event.event)) {
         global.buffer.add(event)
+	console.log(`Added event ${event.event} to buffer`)
+    } else {
+	console.log(`Ignoring event ${event.event}`)
     }
 }
 
 export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<S3Plugin>) => {
     const { global, config, jobs } = meta
+    
+    console.log(`Trying to send batch to S3...`)
 
     const { batch } = payload
     const date = new Date().toISOString()
