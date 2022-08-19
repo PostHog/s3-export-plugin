@@ -2,7 +2,7 @@ import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
 import { brotliCompressSync, gzipSync } from 'zlib'
-import { Plugin, PluginMeta, PluginEvent } from '@posthog/plugin-scaffold'
+import { Plugin, PluginMeta, ProcessedPluginEvent } from '@posthog/plugin-scaffold'
 import { ManagedUpload } from 'aws-sdk/clients/s3'
 
 type S3Plugin = Plugin<{
@@ -33,7 +33,7 @@ type S3Plugin = Plugin<{
 }>
 
 interface UploadJobPayload {
-    batch: PluginEvent[]
+    batch: ProcessedPluginEvent[]
     batchId: number
     retriesPerformedSoFar: number
 }
@@ -42,6 +42,10 @@ export const jobs: S3Plugin['jobs'] = {
     uploadBatchToS3: async (payload, meta) => {
         await sendBatchToS3(payload, meta)
     },
+}
+
+export function convertEventBatchToBuffer(batch: UploadJobPayload['batch']): Buffer {
+    return Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8')
 }
 
 export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
@@ -111,7 +115,7 @@ export const sendBatchToS3 = async (payload: UploadJobPayload, meta: PluginMeta<
     const params: S3.PutObjectRequest = {
         Bucket: config.s3BucketName,
         Key: `${config.prefix || ''}${day}/${dayTime}-${suffix}.jsonl`,
-        Body: Buffer.from(batch.map((event) => JSON.stringify(event)).join('\n'), 'utf8'),
+        Body: convertEventBatchToBuffer(batch),
     }
 
     if (config.compression === 'gzip') {
