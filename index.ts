@@ -86,7 +86,6 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
 
 export const exportEvents: S3Plugin['exportEvents'] = async (events, meta) => {
     const eventsToExport = events.filter(event => !meta.global.eventsToIgnore.has(event.event))
-    console.log(eventsToExport)
     if (eventsToExport.length > 0) {
         await sendBatchToS3({ batch: eventsToExport, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
     }
