@@ -1,4 +1,4 @@
-import { convertEventBatchToBuffer, sendBatchToS3 } from './index'
+import { convertEventBatchToBuffer, exportEvents } from './index'
 
 
 const mockedS3 = {
@@ -9,6 +9,8 @@ describe('S3 Plugin', () => {
     let mockedMeta: any
 
     beforeEach(() => {
+        jest.clearAllMocks()
+
         mockedMeta = {
             global: {
                 s3: mockedS3,
@@ -31,35 +33,32 @@ describe('S3 Plugin', () => {
             },
         }
     })
+    
 
-    describe('sendBatchToS3()', () => {
+    describe('exportEvents()', () => {
         test('uploads to S3', async () => {
-            const payload = {
-                batch: [
-                    {
-                        event: 'test',
-                        properties: {},
-                        distinct_id: 'did1',
-                        team_id: 1,
-                        uuid: '37114ebb-7b13-4301-b849-0d0bd4d5c7e5',
-                        ip: '127.0.0.1',
-                        timestamp: '2022-08-18T15:42:32.597Z',
-                    },
-                    {
-                        event: 'test2',
-                        properties: {},
-                        distinct_id: 'did1',
-                        team_id: 1,
-                        uuid: '37114ebb-7b13-4301-b859-0d0bd4d5c7e5',
-                        ip: '127.0.0.1',
-                        timestamp: '2022-08-18T15:42:32.597Z',
-                        elements: [{ attr_id: 'haha' }],
-                    },
-                ],
-                batchId: 1234,
-                retriesPerformedSoFar: 0
-            }
-            await sendBatchToS3(payload, mockedMeta as any)
+            const events = [
+                {
+                    event: 'test',
+                    properties: {},
+                    distinct_id: 'did1',
+                    team_id: 1,
+                    uuid: '37114ebb-7b13-4301-b849-0d0bd4d5c7e5',
+                    ip: '127.0.0.1',
+                    timestamp: '2022-08-18T15:42:32.597Z',
+                },
+                {
+                    event: 'test2',
+                    properties: {},
+                    distinct_id: 'did1',
+                    team_id: 1,
+                    uuid: '37114ebb-7b13-4301-b859-0d0bd4d5c7e5',
+                    ip: '127.0.0.1',
+                    timestamp: '2022-08-18T15:42:32.597Z',
+                    elements: [{ attr_id: 'haha' }],
+                },
+            ]
+            await exportEvents!(events, mockedMeta as any)
 
             const uploadCall = mockedS3.upload.mock.calls[0]
 
@@ -67,7 +66,24 @@ describe('S3 Plugin', () => {
             expect(uploadCall[0].Key).toContain('custom_prefix_')
             expect(uploadCall[0].Key).toContain('.jsonl')
 
-            expect(Buffer.compare(uploadCall[0].Body,convertEventBatchToBuffer(payload.batch))).toBeTruthy()
+            expect(Buffer.compare(uploadCall[0].Body,convertEventBatchToBuffer(events))).toBeTruthy()
+        })
+
+        test('ignores events in eventsToIgnore', async () => {
+            const events = [
+                {
+                    event: 'ignore me',
+                    properties: {},
+                    distinct_id: 'did1',
+                    team_id: 1,
+                    uuid: '37114ebb-7b13-4301-b849-0d0bd4d5c7e5',
+                    ip: '127.0.0.1',
+                    timestamp: '2022-08-18T15:42:32.597Z',
+                },
+            ]
+            await exportEvents!(events, mockedMeta as any)
+
+            expect(mockedS3.upload).not.toHaveBeenCalled()
         })
     }) 
 

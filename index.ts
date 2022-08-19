@@ -66,9 +66,6 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
         throw new Error('AWS KMS encryption requested but no KMS key ID provided!')
     }
 
-    const uploadMegabytes = Math.max(1, Math.min(parseInt(config.uploadMegabytes) || 1, 100))
-    const uploadMinutes = Math.max(1, Math.min(parseInt(config.uploadMinutes) || 1, 60))
-
     const s3Config: S3.ClientConfiguration = {
         accessKeyId: config.awsAccessKey,
         secretAccessKey: config.awsSecretAccessKey,
@@ -82,22 +79,16 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
 
     global.s3 = new S3(s3Config)
 
-    global.buffer = createBuffer({
-        limit: uploadMegabytes * 1024 * 1024,
-        timeoutSeconds: uploadMinutes * 60,
-        onFlush: async (batch) => {
-            await sendBatchToS3({ batch, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
-        },
-    })
-
     global.eventsToIgnore = new Set(
         config.eventsToIgnore ? config.eventsToIgnore.split(',').map((event) => event.trim()) : null
     )
 }
 
-export const onEvent: S3Plugin['onEvent'] = (event, { global }) => {
-    if (!global.eventsToIgnore.has(event.event)) {
-        global.buffer.add(event)
+export const exportEvents: S3Plugin['exportEvents'] = async (events, meta) => {
+    const eventsToExport = events.filter(event => !meta.global.eventsToIgnore.has(event.event))
+    console.log(eventsToExport)
+    if (eventsToExport.length > 0) {
+        await sendBatchToS3({ batch: eventsToExport, batchId: Math.floor(Math.random() * 1000000), retriesPerformedSoFar: 0 }, meta)
     }
 }
 
