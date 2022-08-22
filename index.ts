@@ -110,7 +110,6 @@ export const sendBatchToS3 = async (events: ProcessedPluginEvent[], meta: Plugin
         params.SSEKMSKeyId = config.sseKmsKeyId
     }
 
-    console.log(`Flushing ${events.length} events!`)
     return new Promise<void>((resolve, reject) => {
         global.s3.upload(params, (err: Error, _: ManagedUpload.SendData) => {
             if (err) {
