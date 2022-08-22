@@ -1,4 +1,3 @@
-import { createBuffer } from '@posthog/plugin-contrib'
 import { S3 } from 'aws-sdk'
 import { randomBytes } from 'crypto'
 import { brotliCompressSync, gzipSync } from 'zlib'
@@ -8,7 +7,6 @@ import { ManagedUpload } from 'aws-sdk/clients/s3'
 type S3Plugin = Plugin<{
     global: {
         s3: S3
-        buffer: ReturnType<typeof createBuffer>
         eventsToIgnore: Set<string>
     }
     config: {
