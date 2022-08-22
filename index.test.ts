@@ -1,15 +1,41 @@
+import { RetryError } from '@posthog/plugin-scaffold'
 import { convertEventBatchToBuffer, exportEvents } from './index'
 
 
 const mockedS3 = {
-    upload: jest.fn()
+    upload: jest.fn().mockImplementation((_, callback) => setImmediate(callback))
 }
+
+const events = [
+    {
+        event: 'test',
+        properties: {},
+        distinct_id: 'did1',
+        team_id: 1,
+        uuid: '37114ebb-7b13-4301-b849-0d0bd4d5c7e5',
+        ip: '127.0.0.1',
+        timestamp: '2022-08-18T15:42:32.597Z',
+    },
+    {
+        event: 'test2',
+        properties: {},
+        distinct_id: 'did1',
+        team_id: 1,
+        uuid: '37114ebb-7b13-4301-b859-0d0bd4d5c7e5',
+        ip: '127.0.0.1',
+        timestamp: '2022-08-18T15:42:32.597Z',
+        elements: [{ attr_id: 'haha' }],
+    },
+]
 
 describe('S3 Plugin', () => {
     let mockedMeta: any
 
     beforeEach(() => {
         jest.clearAllMocks()
+
+        console.log = jest.fn()
+        console.error = jest.fn()
 
         mockedMeta = {
             global: {
@@ -33,31 +59,10 @@ describe('S3 Plugin', () => {
             },
         }
     })
-    
+
 
     describe('exportEvents()', () => {
-        test('uploads to S3', async () => {
-            const events = [
-                {
-                    event: 'test',
-                    properties: {},
-                    distinct_id: 'did1',
-                    team_id: 1,
-                    uuid: '37114ebb-7b13-4301-b849-0d0bd4d5c7e5',
-                    ip: '127.0.0.1',
-                    timestamp: '2022-08-18T15:42:32.597Z',
-                },
-                {
-                    event: 'test2',
-                    properties: {},
-                    distinct_id: 'did1',
-                    team_id: 1,
-                    uuid: '37114ebb-7b13-4301-b859-0d0bd4d5c7e5',
-                    ip: '127.0.0.1',
-                    timestamp: '2022-08-18T15:42:32.597Z',
-                    elements: [{ attr_id: 'haha' }],
-                },
-            ]
+        it('uploads to S3', async () => {
             await exportEvents!(events, mockedMeta as any)
 
             const uploadCall = mockedS3.upload.mock.calls[0]
@@ -69,7 +74,7 @@ describe('S3 Plugin', () => {
             expect(Buffer.compare(uploadCall[0].Body,convertEventBatchToBuffer(events))).toBeTruthy()
         })
 
-        test('ignores events in eventsToIgnore', async () => {
+        it('ignores events in eventsToIgnore', async () => {
             const events = [
                 {
                     event: 'ignore me',
@@ -85,7 +90,17 @@ describe('S3 Plugin', () => {
 
             expect(mockedS3.upload).not.toHaveBeenCalled()
         })
-    }) 
+
+        it('raises a RetryError on upload failures', async () => {
+            mockedS3.upload.mockImplementation((params, callback) => {
+                setImmediate(() => {
+                    callback(new Error("upload error"))
+                })
+            })
+
+            await expect(exportEvents!(events, mockedMeta as any)).rejects.toEqual(new RetryError())
+        })
+    })
 
 })
 

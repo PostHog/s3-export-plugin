@@ -111,11 +111,14 @@ export const sendBatchToS3 = async (events: ProcessedPluginEvent[], meta: Plugin
     }
 
     console.log(`Flushing ${events.length} events!`)
-    global.s3.upload(params, async (err: Error, _: ManagedUpload.SendData) => {
-        if (err) {
-            console.error(`Error uploading to S3: ${err.message}`)
-            throw new RetryError()
-        }
-        console.log(`Uploaded ${events.length} event${events.length === 1 ? '' : 's'} to bucket ${config.s3BucketName}`)
+    return new Promise<void>((resolve, reject) => {
+        global.s3.upload(params, (err: Error, _: ManagedUpload.SendData) => {
+            if (err) {
+                console.error(`Error uploading to S3: ${err.message}`)
+                return reject(new RetryError())
+            }
+            console.log(`Uploaded ${events.length} event${events.length === 1 ? '' : 's'} to bucket ${config.s3BucketName}`)
+            resolve()
+        })
     })
 }
