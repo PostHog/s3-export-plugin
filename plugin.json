@@ -24,18 +24,18 @@
             "required": true
         },
         {
-            "key": "awsRegion",
-            "name": "AWS Region",
-            "type": "string",
-            "default": "us-west-1",
-            "required": true
-        },
-        {
             "key": "s3BucketName",
             "name": "S3 Bucket name",
             "type": "string",
             "default": "",
             "required": true
+        },
+        {
+            "key": "awsRegion",
+            "name": "AWS Region",
+            "type": "string",
+            "default": "us-west-1",
+            "hint": "Required if S3 Bucket Endpoint is not set"
         },
         {
             "key": "prefix",
@@ -91,6 +91,14 @@
             "default": "",
             "hint": "For example: `http://127.0.0.1:9000`, which is a `minio` or `localstack` instance that is API compatible with Amazon S3",
             "required": false
+        },
+        {
+            "key": "s3ForcePathStyle",
+            "name": "[ADVANCED] s3ForcePathStyle",
+            "type": "choice",
+            "choices": ["true", "false"],
+            "default": "false",
+            "hint": "Most be set to `true` for `minio` instances"
         },
         {
             "key": "signatureVersion",
