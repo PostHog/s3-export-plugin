@@ -4,27 +4,30 @@ import { brotliCompressSync, gzipSync } from 'zlib'
 import { Plugin, PluginMeta, ProcessedPluginEvent, RetryError } from '@posthog/plugin-scaffold'
 import { ManagedUpload } from 'aws-sdk/clients/s3'
 
+export type PluginConfig = {
+    awsAccessKey: string
+    awsSecretAccessKey: string
+    awsRegion: string
+    s3BucketName: string
+    s3BucketEndpoint: string
+    prefix: string
+    uploadMinutes: string
+    uploadMegabytes: string
+    eventsToIgnore: string
+    uploadFormat: 'jsonl'
+    compression: 'gzip' | 'brotli' | 'no compression'
+    signatureVersion: '' | 'v4'
+    sse: 'disabled' | 'AES256' | 'aws:kms'
+    sseKmsKeyId: string
+    s3ForcePathStyle: 'true' | 'false'
+}
+
 type S3Plugin = Plugin<{
     global: {
         s3: S3
         eventsToIgnore: Set<string>
     }
-    config: {
-        awsAccessKey: string
-        awsSecretAccessKey: string
-        awsRegion: string
-        s3BucketName: string
-        s3BucketEndpoint: string
-        prefix: string
-        uploadMinutes: string
-        uploadMegabytes: string
-        eventsToIgnore: string
-        uploadFormat: 'jsonl'
-        compression: 'gzip' | 'brotli' | 'no compression'
-        signatureVersion: '' | 'v4'
-        sse: 'disabled' | 'AES256' | 'aws:kms'
-        sseKmsKeyId: string
-    }
+    config: PluginConfig
 }>
 
 export function convertEventBatchToBuffer(events: ProcessedPluginEvent[]): Buffer {
@@ -32,15 +35,15 @@ export function convertEventBatchToBuffer(events: ProcessedPluginEvent[]): Buffe
 }
 
 export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
-    const { global, config, jobs } = meta
+    const { global, config } = meta
     if (!config.awsAccessKey) {
         throw new Error('AWS access key missing!')
     }
     if (!config.awsSecretAccessKey) {
         throw new Error('AWS secret access key missing!')
     }
-    if (!config.awsRegion) {
-        throw new Error('AWS region missing!')
+    if (!config.awsRegion && !config.s3BucketEndpoint) {
+        throw new Error('AWS region must be set if config.s3BucketEndpoint is unset!')
     }
     if (!config.s3BucketName) {
         throw new Error('S3 bucket name missing!')
@@ -52,8 +55,18 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     const s3Config: S3.ClientConfiguration = {
         accessKeyId: config.awsAccessKey,
         secretAccessKey: config.awsSecretAccessKey,
-        region: config.awsRegion,
-        ...(config.signatureVersion ? { signatureVersion: config.signatureVersion } : {}),
+    }
+
+    if (config.awsRegion) {
+        s3Config.region = config.awsRegion
+    }
+
+    if (config.signatureVersion) {
+        s3Config.signatureVersion = config.signatureVersion
+    }
+
+    if (config.s3ForcePathStyle === 'true') {
+        s3Config.s3ForcePathStyle = true
     }
 
     if (config.s3BucketEndpoint) {
