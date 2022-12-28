@@ -1,6 +1,5 @@
 import { RetryError } from '@posthog/plugin-scaffold'
-import { convertEventBatchToBuffer, exportEvents, PluginConfig, setupPlugin } from './index'
-
+import { convertEventBatchToBuffer, exportEvents, getSettings, PluginConfig, setupPlugin } from './index'
 
 const mockedS3 = {
     upload: jest.fn().mockImplementation((_, callback) => setImmediate(callback))
@@ -119,6 +118,12 @@ describe('S3 Plugin', () => {
         })
     })
 
+    describe('getSettings()', () => {
+        it('indicates it can handle large batches', () => {
+            expect(getSettings!(mockedMeta as any).handlesLargeBatches).toEqual(true)
+        })
+    })
+
     describe('exportEvents()', () => {
         it('uploads to S3', async () => {
             await exportEvents!(events, mockedMeta as any)
@@ -150,7 +155,7 @@ describe('S3 Plugin', () => {
         })
 
         it('raises a RetryError on upload failures', async () => {
-            mockedS3.upload.mockImplementation((params, callback) => {
+            mockedS3.upload.mockImplementation((_, callback) => {
                 setImmediate(() => {
                     callback(new Error("upload error"))
                 })

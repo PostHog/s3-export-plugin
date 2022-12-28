@@ -80,6 +80,12 @@ export const setupPlugin: S3Plugin['setupPlugin'] = (meta) => {
     )
 }
 
+export const getSettings: S3Plugin['getSettings'] = (_) => {
+    return {
+        handlesLargeBatches: true
+    }
+}
+
 export const exportEvents: S3Plugin['exportEvents'] = async (events, meta) => {
     const eventsToExport = events.filter(event => !meta.global.eventsToIgnore.has(event.event))
     if (eventsToExport.length > 0) {
