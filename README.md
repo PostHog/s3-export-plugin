@@ -4,6 +4,8 @@ Export events to Amazon S3 on ingestion. Archive your data, or simply free it up
 
 **_Available on self-hosted PostHog 1.24.0+_**
 
+:warning: If you have low volumes of data this can cause us to ship a high number of files to blob storage and for loading into S3. This can translate into higher than usual billing because of blob storage api calls and the time it takes to list and load small files in S3.
+
 ## Installation
 
 1. Access PostHog's **Plugins** page from the sidebar.
