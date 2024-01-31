@@ -54,4 +54,4 @@ If you incorrectly configured your bucket or access roles, you will not get an e
 
 ## Questions?
 
-### [Join the PostHog Users Slack community.](https://posthog.com/slack)
+### [Join the PostHog community.](https://posthog.com/questions)
