@@ -1,5 +1,8 @@
 # S3 Export Plugin
 
+> **Warning**
+> This plugin has been deprecated in favor of our [S3 destination for batch exports](https://posthog.com/docs/cdp/batch-exports/s3).
+
 Export events to Amazon S3 on ingestion. Archive your data, or simply free it up for other kinds of analysis, by integrating export right into your event processing pipeline.
 
 **_Available on self-hosted PostHog 1.24.0+_**
