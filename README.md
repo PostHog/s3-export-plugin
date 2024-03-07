@@ -1,5 +1,5 @@
 > [!WARNING]
-> ## This plugin has been deprecated in favor of our [BigQuery destination for batch exports](https://posthog.com/docs/cdp/batch-exports/bigquery).
+> ## This plugin has been deprecated in favor of our [S3 destination for batch exports](https://posthog.com/docs/cdp/batch-exports/s3).
 
 # S3 Export Plugin
 
